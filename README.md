@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ProjectionPro
 
-## Getting Started
+ProjectionPro is a financial projection report MVP for Indian finance professionals. V1 focuses on financial projections; CMA is intentionally a coming-soon area.
 
-First, run the development server:
+## Implemented
+
+- Applicant, business, sector, assumptions, financing, and existing-loan inputs
+- Recovered 38-sector assumption library from the supplied legacy HTML
+- Projection calculations ported from its embedded JavaScript, including monthly term-loan amortization, WDV depreciation, gold-loan bullet repayment, existing term-loan repayment, statements, cash flow, and ratios
+- Browser-local report workflow for credential-free development; report creation, edit, duplication, report list, print-to-PDF, and Excel workbook export
+- Excel workbook includes a separate `Industry Library` worksheet; the PDF print view excludes that worksheet
+- Supabase Auth scaffolding, owner-scoped report APIs, database migration with RLS, server-side payment verification, subscription activation, webhook processing, and trusted admin role checks
+- Live admin user/payment/overview pages when Supabase credentials and migration are configured
+
+## Important data boundary
+
+Without Supabase credentials, reports are stored only in the current browser profile and do not synchronize across devices. Configure Supabase before production use. The calculation port has automated checks for the assumption count, zero-interest amortization, existing-term-loan installments, and gold-loan bullet repayment; validate representative outputs against the legacy workbook before relying on generated financial reports.
+
+## Requirements
+
+- Node.js 22 or newer recommended
+- npm
+- Supabase project for authentication and durable report/payment data
+- Razorpay account for paid access
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. With Supabase variables absent, the workspace supports local browser testing; paid checkout and durable cloud features remain unavailable.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env.local` and add credentials directly in that local file. Do not commit `.env.local` or share service-role/payment secrets in chat.
 
-## Learn More
+```dotenv
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_SUPPORT_EMAIL=support@projectionpro.in
+NEXT_PUBLIC_SUPPORT_WHATSAPP=919876543210
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+```
 
-To learn more about Next.js, take a look at the following resources:
+The Supabase service role and Razorpay secrets are server-only values. Only the Supabase URL/anon key and Razorpay key ID may be exposed as `NEXT_PUBLIC_*` values.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Supabase setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Create a Supabase project and set the URL, anon key, and service role key in `.env.local`.
+2. Apply `supabase/migrations/202610030001_initial_schema.sql` using the Supabase SQL editor or Supabase CLI.
+3. Configure Auth email confirmation and redirect URLs for localhost and the production domain.
+4. Assign admin access only through trusted Supabase `app_metadata`, for example `{"role":"admin"}`. Do not use user-editable metadata for roles.
+5. Create a user, sign in, and confirm profile creation, report ownership, RLS, and subscription queries.
 
-## Deploy on Vercel
+Paid report writes require an active `subscriptions` row. Report reads remain available after expiry. Payment and subscription rows can only be written through the service-role server flow.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Razorpay setup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Add test credentials locally first.
+2. Configure the webhook URL as `https://YOUR_DOMAIN/api/webhooks/razorpay`.
+3. Subscribe to `payment.captured` and use the same webhook secret in the app environment.
+4. Test order creation, captured-payment verification, webhook retries, and subscription activation before switching to live credentials.
+
+A payment signature by itself does not grant access: the server verifies the payment with Razorpay and then activates entitlement through an idempotent database function.
+
+## Validation
+
+```bash
+npm test
+npm run lint
+npx tsc --noEmit
+npm run build
+npm audit --omit=dev
+```
+
+## Deploy preparation
+
+- Configure every environment variable in the Vercel project for preview/production as appropriate.
+- Apply the Supabase migration to the matching database and configure auth redirect URLs.
+- Set a trusted admin `app_metadata.role` claim; no administrator is created automatically.
+- Configure Razorpay webhook URL and secret.
+- Validate generated outputs against the original Excel workbook across representative sectors, financing cases, and optional loan combinations.
+- Have qualified counsel review Terms, Privacy, and Refund/Cancellation policy copy before accepting payments.
+
+The current dependency audit is clean for production dependencies. The development toolchain may still report advisories in Next's lint dependency chain; inspect `npm audit` before upgrading that toolchain.
