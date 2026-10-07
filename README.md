@@ -26,20 +26,20 @@ Without Supabase credentials, reports are stored only in the current browser pro
 ## Local development
 
 ```bash
-npm install
-npm run dev
+npm ci
+npm run dev -- --port 3001
 ```
 
-Open http://localhost:3000. With Supabase variables absent, the workspace supports local browser testing; paid checkout and durable cloud features remain unavailable.
+Open http://localhost:3001. With Supabase variables absent, the workspace supports local browser testing; paid checkout and durable cloud features remain unavailable.
 
 ## Environment variables
 
 Copy `.env.example` to `.env.local` and add credentials directly in that local file. Do not commit `.env.local` or share service-role/payment secrets in chat.
 
 ```dotenv
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_SUPPORT_EMAIL=support@projectionpro.in
-NEXT_PUBLIC_SUPPORT_WHATSAPP=919876543210
+NEXT_PUBLIC_APP_URL=http://localhost:3001
+NEXT_PUBLIC_SUPPORT_EMAIL=
+NEXT_PUBLIC_SUPPORT_WHATSAPP=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
@@ -54,7 +54,7 @@ The Supabase service role and Razorpay secrets are server-only values. Only the 
 
 1. Create a Supabase project and set the URL, anon key, and service role key in `.env.local`.
 2. Apply `supabase/migrations/202610030001_initial_schema.sql` using the Supabase SQL editor or Supabase CLI.
-3. Configure Auth email confirmation and redirect URLs for localhost and the production domain.
+3. For V1, disable mandatory email confirmation in Supabase Auth. Configure Site URL and allowed password-reset redirect URLs for http://localhost:3001 and the production domain.
 4. Assign admin access only through trusted Supabase `app_metadata`, for example `{"role":"admin"}`. Do not use user-editable metadata for roles.
 5. Create a user, sign in, and confirm profile creation, report ownership, RLS, and subscription queries.
 
@@ -89,3 +89,37 @@ npm audit --omit=dev
 - Have qualified counsel review Terms, Privacy, and Refund/Cancellation policy copy before accepting payments.
 
 The current dependency audit is clean for production dependencies. The development toolchain may still report advisories in Next's lint dependency chain; inspect `npm audit` before upgrading that toolchain.
+
+## Repository and deployment handoff
+
+Use this repository only for ProjectionPro. Git origin should be
+`https://github.com/SRO0629673/projection-saas.git`.
+The separate `projection-saas-platform` folder is an unused starter;
+`economics-movie-studio` is a different product.
+
+In Vercel, import the Projection repository as a Next.js project with the repository
+root as Root Directory. Set the environment variables from `.env.example` using
+credentials for the Projection database, not the Economics database. Configure
+Preview and Production explicitly. Set `NEXT_PUBLIC_APP_URL` to the corresponding
+deployed origin and configure matching Supabase redirect URLs, then redeploy.
+Keep Razorpay in Test Mode until payment and webhook validation succeeds.
+Do not enable paid launch based on build success alone.
+
+## Remaining acceptance work
+
+The current implementation still needs work against the original specification:
+
+- Multi-step builder, debounced draft autosave, retry and resume behavior.
+- Report deletion with an accessible confirmation dialog.
+- Versioned input, calculation engine and report template metadata.
+- Manual admin access grant, extension, revocation and audit trail.
+- Analytics events without client or financial data, sitemap and robots rules.
+- Representative comparisons against the original tool; the existing five engine
+  tests are focused checks, not a full migration parity suite.
+- Live Supabase registration/reset, report persistence, cross-user RLS and access
+  expiry validation after migrations are applied.
+- Razorpay Test Mode orders, callbacks, invalid signatures and repeated webhooks.
+- Deployed Preview and Production checks for reports and workbook/print exports.
+
+Admin users now support name/email/mobile search, report counts and explicit
+query failure states. Large user datasets will need pagination before scale-up.
